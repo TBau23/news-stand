@@ -14,5 +14,5 @@ export async function signup(formData: FormData): Promise<{ error: string } | un
     return { error: error.message };
   }
 
-  redirect("/dashboard");
+  redirect("/onboarding");
 }

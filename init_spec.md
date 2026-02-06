@@ -6,9 +6,11 @@ Why?
 Most social feeds reward volume. The more you post and scroll, the more the platform wins. dossier inverts that. The constraint forces curation — you're not sharing everything, you're sharing the best thing. That makes every share a signal worth paying attention to.
 It's also a quiet, ambient social experience. There's no feed to infinite-scroll, no likes to chase, no algorithm deciding what you see. You open it, see what your people shared today, maybe tap into something interesting, and close it. Done.
 Core Mechanics
-One share per day. Each user gets a single slot that resets daily. They fill it with a URL or a freeform entry (for books, podcasts, offline content — anything without a clean link). Optionally, they add a short note — a line or two on why they picked it.
+One share per day. Each user gets a single slot that resets daily. They fill it with a URL or a freeform entry (for books, podcasts, offline content — anything without a clean link). Optionally, they add a short note — a line or two on why they picked it. Once posted, the content is locked — you can edit the note, but you can't swap the share itself. A confirmation step before posting reinforces the weight of the choice.
 The daily surface. When you open the app, you see today's shares from the people you follow. The visual treatment should feel more like browsing a curated shelf than scrolling a feed. Early in the day it's sparse; by evening it's full. That rhythm is part of the experience.
-Small social graph. This works best with a tight group — closer to a group chat than a follower count. The design should encourage intentional connections over mass following.
+Timezone-aware days. Each user's "day" runs midnight-to-midnight in their own timezone. When viewing your feed, a share disappears when it expires in the sharer's timezone — not yours. This means the feed has a rolling quality: east coast shares cycle off first, west coast last. Users set their timezone during profile setup; it's stored on their profile.
+Small social graph. This works best with a tight group — closer to a group chat than a follower count. The design should encourage intentional connections over mass following. Following is one-directional — you follow someone, they may or may not follow you back. This keeps things flexible as the graph grows.
+Visibility. Shares are visible only to people who follow you. The app is not a public broadcast tool — it's a shared space for people who've opted into each other's curation.
 Link unfurling. When someone shares a URL, the app pulls the title, image, and description automatically so each share has a rich visual presence without the user doing any work.
 
 Development Phases
@@ -56,13 +58,29 @@ supabase/
 ```
 
 **Local dev:** `npx supabase start` then `npm run dev`
-Phase 2 — Sharing Flow
-Build the share submission experience. User pastes a URL, the app unfurls it (pulls OG metadata via a server-side route), user optionally adds a short note, and the share is saved. Handle the constraint — if you've already shared today, show what you shared and offer the option to swap (or don't, depending on which direction we go). Support freeform entries for content without a URL.
-Phase 3 — The Daily View
-Build the main screen — the surface where you see today's shares from people you follow. Each share rendered as a card with the unfurled content (title, image, source) and the sharer's note. Tapping a card opens the original content. This is the core experience so it needs to feel good even if it's visually simple at first.
-Phase 4 — Social Graph
-Follow/unfollow mechanics. A way to find and add friends (invite links, username search, or both). A simple profile or settings screen. Keep the social layer minimal — this isn't a social network, it's a shared reading list.
-Phase 5 — Polish and Realtime
+Phase 2 — Profile Onboarding & Timezone
+Extend the signup flow so new users set up their profile (username, display name) and select their timezone. The timezone is stored on the `profiles` table and drives when a user's daily share window resets. Add a `timezone` column to profiles. Update the auto-create profile trigger or add a post-signup onboarding step. This must land before sharing works, since `shared_date` is derived from the user's timezone.
+
+Phase 3 — Sharing Flow
+Build the share submission experience. User pastes a URL, the app unfurls it (pulls OG metadata via a server-side route), user optionally adds a short note, and submits. Before saving, show a confirmation step — "This is your share for today. You won't be able to change it." Once posted, the content URL is locked; the note remains editable. If you've already shared today, show what you shared with the option to edit the note. Freeform entries (for content without a URL) are deferred to a later phase.
+
+Phase 4 — The Daily View
+Build the main screen — the surface where you see today's shares from people you follow. Each share rendered as a card with the unfurled content (title, image, source) and the sharer's note. Tapping a card opens the original content. Shares are filtered by the sharer's timezone — a share disappears from your feed when it expires in the sharer's local midnight. This is the core experience so it needs to feel good even if it's visually simple at first. Must handle empty states: no follows yet, no shares yet today, you haven't shared yet.
+
+Phase 5 — Privacy & Security
+Update Row Level Security from public-read to followers-only. Shares should only be visible to authenticated users who follow the sharer. Update all queries to respect this. Add blocking — a user can block someone, which removes the follow relationship and prevents re-following. Rate limiting on API routes. This phase hardens the app before opening it up to more users.
+
+Phase 6 — Social Graph
+Follow/unfollow mechanics. Invite links — generate a personal link, share it with a friend, they sign up and can find/follow you. Username search for finding people already on the app. A simple profile page showing a user's current share and basic info. Keep the social layer minimal — this isn't a social network, it's a shared reading list.
+
+Phase 7 — Polish and Realtime
 Supabase realtime subscriptions so new shares appear on the daily view without refreshing. Transitions and micro-interactions that make the shelf feel alive as it fills up. Responsive design that works well on mobile browsers. PWA setup (manifest, icons, add-to-home-screen prompt) so it feels app-like on a phone.
-Phase 6 — History and Discovery
+
+Phase 8 — History and Discovery
 An archive view — browse past days to see what people shared last Tuesday, last week, last month. Maybe surface patterns: "Sarah has shared 3 articles from this author" or "this link was shared by 4 people." This is the phase where the daily constraint starts producing a valuable long-term artifact.
+
+Phase 9 — Account Management & Settings
+Settings screen for updating profile (display name, username, timezone), changing password, and managing blocked users. Account deletion with data cleanup. Freeform share entries could also land here once the core loop is proven.
+
+Phase 10 — Infrastructure Hardening
+OG metadata caching — store unfurled metadata on the share record so we're not re-fetching on every render. Image proxying or storage so unfurled images don't break from CORS, expiry, or slow third-party servers. Performance profiling and optimization.

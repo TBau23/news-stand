@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "./actions";
-import type { Database } from "@/lib/database.types";
 
-type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+const cardClass =
+  "p-4 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800";
 
 export default async function DashboardPage(): Promise<React.JSX.Element> {
   const supabase = await createClient();
@@ -12,9 +12,9 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("*")
+    .select("id, username")
     .eq("id", user!.id)
-    .single<Profile>();
+    .single();
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black">
@@ -23,18 +23,18 @@ export default async function DashboardPage(): Promise<React.JSX.Element> {
           Dashboard
         </h1>
         <div className="space-y-4 mb-8">
-          <div className="p-4 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+          <div className={cardClass}>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">Email</p>
             <p className="text-zinc-900 dark:text-zinc-50">{user?.email}</p>
           </div>
-          <div className="p-4 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+          <div className={cardClass}>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">Profile ID</p>
             <p className="text-zinc-900 dark:text-zinc-50 font-mono text-sm break-all">
               {profile?.id}
             </p>
           </div>
           {profile?.username && (
-            <div className="p-4 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+            <div className={cardClass}>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">Username</p>
               <p className="text-zinc-900 dark:text-zinc-50">@{profile.username}</p>
             </div>

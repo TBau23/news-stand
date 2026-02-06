@@ -1,0 +1,4 @@
+- Write tests for pure functions
+- Check for reusable functions within the codebase before creating new ones
+- Follow the single responsibility principle
+- Avoid creating god files, break code into additional intelligently structured files when needed
