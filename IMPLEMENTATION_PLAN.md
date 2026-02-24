@@ -30,4 +30,39 @@ None required. The `shares` and `profiles` tables from Phases 1-2 already have a
 
 ---
 
-*Phases 1-2 are complete. Phases 4-10 are not yet specced.*
+## Phase 4 — The Daily View
+
+Phase 4 builds the core reading experience: the main screen where you see today's shares from people you follow. It introduces timezone-aware feed logic, a reusable share card component, and the primary landing page. Three specs, each covering a single concern.
+
+### Specs
+
+| # | Spec File | Concern | Summary |
+|---|---|---|---|
+| 1 | [`specs/feed-query.md`](specs/feed-query.md) | Timezone-aware feed data | Database function that fetches active shares from followed users, filtering out shares past midnight in the sharer's timezone. Returns share data joined with sharer profile info. |
+| 2 | [`specs/share-card.md`](specs/share-card.md) | Share card component | Reusable `ShareCard` component that renders a single share with OG metadata, sharer identity, and note. Handles missing metadata gracefully. Designed for reuse across Phase 3 retrofit, Phase 6, and Phase 8. |
+| 3 | [`specs/daily-view-page.md`](specs/daily-view-page.md) | Daily view page | The main `/dashboard` page — displays the feed grid of share cards, share status banner, header navigation, and handles three empty states (no follows, no shares today, combined welcome). |
+
+### Recommended Build Order
+
+1. **Feed Query** — No UI dependency. Create the database function and migration. Can be tested with mock data or manual inserts. Foundation for the page.
+2. **Share Card** — Standalone presentational component. Can be built and tested with mock data from `lib/mock-data.ts` independently of the feed query.
+3. **Daily View Page** — Wires together the feed query and share card. Depends on both previous specs. Also depends on Phase 3 routes (`/share`, `/share/today`) for navigation links.
+
+### Data Model Changes
+One new migration required:
+- `get_active_feed_shares(p_user_id UUID)` — a database function (Supabase RPC) that performs the timezone-aware feed query with joins across `shares`, `follows`, and `profiles`.
+
+No table schema changes needed.
+
+### New Dependencies (to be installed)
+None. Phase 4 uses existing libraries (Next.js, Supabase, Tailwind).
+
+### Open Decisions
+- **Route path** (documented in `specs/daily-view-page.md`): Replace `/dashboard` content vs. new `/feed` route vs. root `/`. Recommendation: replace `/dashboard`.
+- **Layout style** (documented in `specs/daily-view-page.md`): Uniform grid vs. masonry. Recommendation: uniform CSS Grid, masonry deferred to Phase 7.
+- **SECURITY DEFINER vs. INVOKER** (documented in `specs/feed-query.md`): For the feed function. Recommendation: SECURITY INVOKER for now, revisit in Phase 5 when RLS tightens.
+- **Timestamp on share cards** (documented in `specs/share-card.md`): No timestamp vs. relative time vs. time-of-day label. Recommendation: soft time-of-day label.
+
+---
+
+*Phases 1-2 are complete. Phase 3 is specced (not yet implemented). Phase 4 is specced. Phases 5-10 are not yet specced.*
