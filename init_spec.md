@@ -58,8 +58,31 @@ supabase/
 ```
 
 **Local dev:** `npx supabase start` then `npm run dev`
-Phase 2 — Profile Onboarding & Timezone
+Phase 2 — Profile Onboarding & Timezone ✓ COMPLETE
 Extend the signup flow so new users set up their profile (username, display name) and select their timezone. The timezone is stored on the `profiles` table and drives when a user's daily share window resets. Add a `timezone` column to profiles. Update the auto-create profile trigger or add a post-signup onboarding step. This must land before sharing works, since `shared_date` is derived from the user's timezone.
+
+**Implemented:**
+- Migration adding `timezone` (IANA format, default `America/New_York`) to `profiles`, plus `note`, `og_image_url`, `og_site_name` on `shares`. Dropped `shared_date` DB default so app code must compute it from the user's timezone.
+- Onboarding page at `/onboarding` with form for username, display name, and timezone selector
+- Auto-detects browser timezone via `Intl.DateTimeFormat`
+- Server action validates username format (lowercase alphanumeric + underscores, 3+ chars), handles unique constraint violations
+- Protected layout guard: checks if `profiles.username` is null and redirects to `/onboarding` (skips when already on that page)
+- Signup action redirects to `/onboarding` instead of `/dashboard`
+- Middleware sets `x-pathname` header for server components to read the current route
+- Regenerated `database.types.ts` from Supabase (includes `Relationships`, `__InternalSupabase`, and helper types required by Supabase JS v2.94+)
+
+**New/modified files:**
+```
+app/(protected)/onboarding/
+  page.tsx              # Onboarding form (client component)
+  actions.ts            # completeOnboarding server action
+app/(protected)/layout.tsx  # Added onboarding guard
+app/(auth)/signup/actions.ts # Redirect to /onboarding
+lib/supabase/middleware.ts   # x-pathname header
+lib/database.types.ts        # Regenerated from Supabase
+supabase/migrations/
+  20260205060000_add_timezone_and_share_metadata.sql
+```
 
 Phase 3 — Sharing Flow
 Build the share submission experience. User pastes a URL, the app unfurls it (pulls OG metadata via a server-side route), user optionally adds a short note, and submits. Before saving, show a confirmation step — "This is your share for today. You won't be able to change it." Once posted, the content URL is locked; the note remains editable. If you've already shared today, show what you shared with the option to edit the note. Freeform entries (for content without a URL) are deferred to a later phase.
