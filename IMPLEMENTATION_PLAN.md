@@ -65,4 +65,41 @@ None. Phase 4 uses existing libraries (Next.js, Supabase, Tailwind).
 
 ---
 
-*Phases 1-2 are complete. Phase 3 is specced (not yet implemented). Phase 4 is specced. Phases 5-10 are not yet specced.*
+## Phase 5 — Privacy & Security
+
+Phase 5 hardens the app before opening it to more users. It tightens data access from public-read to followers-only, adds user blocking mechanics, and introduces rate limiting on API routes and server actions. Three specs, each covering a single concern.
+
+### Specs
+
+| # | Spec File | Concern | Summary |
+|---|---|---|---|
+| 1 | [`specs/followers-only-visibility.md`](specs/followers-only-visibility.md) | Share visibility via RLS | Replaces public-read RLS on `shares` with followers-only + owner policies. Scopes `follows` reads to authenticated users. Verifies all existing queries (feed, share creation, today's view) work under the new policies. |
+| 2 | [`specs/user-blocking.md`](specs/user-blocking.md) | Block/unblock mechanics | New `blocks` table, server actions for block/unblock, follow removal on block, prevention of re-following via updated `follows` INSERT policy. Minimal UI via share card menu. |
+| 3 | [`specs/rate-limiting.md`](specs/rate-limiting.md) | API rate limiting | In-memory sliding-window rate limiter applied per-user (authenticated) or per-IP (unauthenticated). Covers unfurl, share creation, note editing, blocking, login, and signup endpoints. |
+
+### Recommended Build Order
+
+1. **Followers-Only Visibility** — Pure database migration, no application code changes. Can be deployed and verified independently. Must land before blocking has its full privacy effect.
+2. **User Blocking** — Depends on followers-only RLS being in place for the full privacy guarantee (blocking removes follows, which under followers-only RLS removes share visibility). Can be built in parallel with the migration if tested against the new policies.
+3. **Rate Limiting** — Independent of the other two specs. Can be built in any order. Retrofits rate limit calls into existing and new endpoints.
+
+### Data Model Changes
+One migration required with:
+- Dropped and replaced RLS policies on `shares` (public-read → followers-only + owner)
+- Dropped and replaced RLS policy on `follows` (public-read → authenticated-only)
+- Updated `follows` INSERT policy (block check)
+- New `blocks` table with RLS, indexes, and constraints
+
+No changes to existing table schemas.
+
+### New Dependencies (to be installed)
+None for the recommended in-memory approach. If upgrading to distributed rate limiting later: `@upstash/ratelimit` + `@upstash/redis`.
+
+### Open Decisions
+- **Follows read scope** (documented in `specs/followers-only-visibility.md`): All authenticated users vs. only participants in the relationship. Recommendation: all authenticated users.
+- **Block trigger UI** (documented in `specs/user-blocking.md`): Share card three-dot menu in Phase 5 vs. defer to Phase 6 profiles. Recommendation: share card menu.
+- **Rate limiting backend** (documented in `specs/rate-limiting.md`): In-memory vs. Upstash Redis vs. middleware. Recommendation: in-memory for Phase 5, document upgrade path.
+
+---
+
+*Phases 1-2 are complete. Phases 3-4 are specced (not yet implemented). Phase 5 is specced. Phases 6-10 are not yet specced.*
