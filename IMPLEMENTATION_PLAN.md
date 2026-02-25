@@ -47,7 +47,7 @@ Phase 4 builds the core reading experience: the main screen where you see today'
 
 1. ~~**Feed Query**~~ ✅ **DONE** — `get_active_feed_shares` database function in `supabase/migrations/20260225000000_add_get_active_feed_shares.sql`. Uses `SECURITY INVOKER` and `LANGUAGE sql STABLE`. TypeScript layer in `lib/feed.ts` with `FeedShare` type, `computeShareExpiration` (pure timezone→UTC expiration), `isShareActive` (pure active check), and `getFeedShares` (Supabase RPC wrapper). RPC type added to `lib/database.types.ts`. 22 tests covering timezone offsets (UTC, ET, PT, JST, IST, NPT), DST transitions (spring forward/fall back), boundary dates (year end, leap year), and default timezone fallback. 87 total tests passing.
 2. ~~**Share Card**~~ ✅ **DONE** — Reusable `ShareCard` client component in `components/share-card.tsx`. Pure helper functions (`getTimeOfDayLabel`, `getAvatarColor`, `getInitial`) in `lib/share-card.ts` with 15 tests. Component renders OG metadata (image, title, description, domain), optional sharer header with avatar fallback (initial-letter circle with deterministic color), soft time-of-day label, and quoted note. Content area is a clickable link (`target="_blank"`); sharer header and note are not clickable. Handles three rendering modes: full metadata, partial metadata (graceful omission), and no metadata (domain + "No preview available"). Broken images hidden via `onError`. Exported `ShareCardProps` type for consumers. 102 total tests passing.
-3. **Daily View Page** — Wires together the feed query and share card. Depends on both previous specs. Also depends on Phase 3 routes (`/share`, `/share/today`) for navigation links.
+3. ~~**Daily View Page**~~ ✅ **DONE** — Replaced the scaffolding `/dashboard` page with the full daily view. Server component fetches feed shares (via `getFeedShares` RPC), user's sharing status, and follow count in parallel. Header with "Dossier" branding, contextual share link (`/share` or `/share/today`), user avatar initial circle, and sign-out dropdown. Share status banner (shared/not shared). Responsive CSS Grid feed (1/2/3 columns at mobile/tablet/desktop). Three empty states: combined welcome (no follows + no share), no-follows, no-shares-today. Error state for feed query failure. Pure helper functions (`getEmptyStateType`, `getShareLink`) in `lib/dashboard.ts` with 9 tests. Loading skeleton in `loading.tsx` for client-side transitions. 111 total tests passing.
 
 ### Data Model Changes
 One new migration required:
@@ -372,4 +372,4 @@ This migration is only applied if profiling data justifies it.
 
 ---
 
-*Phases 1-3 are complete. Phases 4-10 are specced (not yet implemented).*
+*Phases 1-4 are complete. Phases 5-10 are specced (not yet implemented).*
