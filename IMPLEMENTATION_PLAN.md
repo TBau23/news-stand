@@ -149,4 +149,64 @@ None. Phase 6 uses existing libraries (Next.js, Supabase, Tailwind).
 
 ---
 
-*Phases 1-2 are complete. Phases 3-5 are specced (not yet implemented). Phase 6 is specced. Phases 7-10 are not yet specced.*
+## Phase 7 — Polish and Realtime
+
+Phase 7 makes the app feel alive and native. It adds live feed updates via Supabase Realtime, animations that bring the daily shelf to life, responsive layouts for mobile browsers, and Progressive Web App configuration so the app can be installed on a phone's home screen. Four specs, each covering a single concern.
+
+### Specs
+
+| # | Spec File | Concern | Summary |
+|---|---|---|---|
+| 1 | [`specs/realtime-feed.md`](specs/realtime-feed.md) | Live feed updates | Supabase Realtime subscription on `shares` for live share appearance. Client-side expiration timers for timezone-aware share removal. Reconnection handling with full feed re-fetch. Visibility-based refresh on tab return. |
+| 2 | [`specs/feed-transitions.md`](specs/feed-transitions.md) | Animations and micro-interactions | Staggered entrance on page load, fade+scale entry for realtime shares, fade-out exit for expired shares, hover/press card states. CSS-only (no animation library). Respects `prefers-reduced-motion`. |
+| 3 | [`specs/responsive-design.md`](specs/responsive-design.md) | Mobile-first responsive layout | Cross-cutting polish pass for all pages. 44px touch targets, iOS zoom prevention, safe area insets, mobile-compact header, per-page responsive behavior at three breakpoints (mobile/tablet/desktop). |
+| 4 | [`specs/pwa-setup.md`](specs/pwa-setup.md) | Progressive Web App | Web app manifest, app icons (standard + maskable + Apple), iOS meta tags, standalone mode considerations. No service worker for Phase 7 (deferred to Phase 10). Dismissable in-app install hint. |
+
+### Recommended Build Order
+
+1. **Responsive Design** — Cross-cutting layout pass that touches all existing pages. Best done first since it establishes the mobile foundation for everything else. No dependencies on other Phase 7 specs.
+2. **PWA Setup** — Configuration and metadata. Can be done in parallel with responsive design. Shares the viewport and safe area concerns.
+3. **Feed Transitions** — CSS animations for the daily view. Depends on the daily view page (Phase 4) being built. Independent of realtime — the initial load animations and hover states work without realtime.
+4. **Realtime Feed** — Supabase Realtime subscription. Depends on the daily view page (Phase 4) and integrates with feed transitions for entry/exit animations. Should be built last since it's the most complex and benefits from having animations ready.
+
+### Data Model Changes
+None. Phase 7 is entirely client-side and configuration. No database migrations, no table changes, no new functions.
+
+### New Dependencies (to be installed)
+None for the recommended approach. All features use CSS animations, built-in browser APIs, and existing Supabase JS SDK (which includes Realtime).
+
+If the service worker is added later (deferred to Phase 10): `@ducanh2912/next-pwa` or a manual `public/sw.js`.
+
+### Files to Create
+
+| File | Spec |
+|---|---|
+| `public/manifest.json` | PWA Setup |
+| `public/icons/icon-192.png` | PWA Setup |
+| `public/icons/icon-512.png` | PWA Setup |
+| `public/icons/icon-maskable-192.png` | PWA Setup |
+| `public/icons/icon-maskable-512.png` | PWA Setup |
+| `public/icons/apple-touch-icon.png` | PWA Setup |
+| Client component for realtime feed (e.g., `FeedRealtime.tsx`) | Realtime Feed |
+| CSS animation classes (in `globals.css` or component-scoped) | Feed Transitions |
+
+### Modifications to Existing Code
+- **Root layout** (`app/layout.tsx`): Add PWA metadata, manifest link, Apple meta tags, viewport-fit.
+- **Daily view page** (`app/(protected)/dashboard/page.tsx`): Refactor to pass initial data to a client component for realtime. Add animation classes to share cards.
+- **Share card** (`ShareCard` component): Add hover/press CSS transitions, animation state classes.
+- **All page layouts**: Apply responsive breakpoint styles, touch target sizing, mobile typography.
+- **Global CSS** (`app/globals.css`): Add animation keyframes, reduced-motion media query, overscroll behavior, safe area insets.
+
+### Open Decisions
+- **CSS-only vs. animation library** (documented in `specs/feed-transitions.md`): CSS keyframes/transitions vs. Framer Motion. Recommendation: CSS-only.
+- **Service worker** (documented in `specs/pwa-setup.md`): Include in Phase 7 vs. defer to Phase 10. Recommendation: defer.
+- **iOS status bar style** (documented in `specs/pwa-setup.md`): `default` vs. `black-translucent`. Recommendation: `default`.
+- **Bottom navigation** (documented in `specs/responsive-design.md`): Header-only vs. bottom tab bar on mobile. Recommendation: header-only.
+- **Sticky CTA approach** (documented in `specs/responsive-design.md`): `position: sticky` vs. `position: fixed` with keyboard awareness. Recommendation: sticky.
+- **In-app install hint** (documented in `specs/pwa-setup.md`): Show dismissable banner vs. skip. Recommendation: show once, subtle.
+- **Manual refresh in standalone mode** (documented in `specs/pwa-setup.md`): Pull-to-refresh vs. rely on realtime. Recommendation: rely on realtime.
+- **RLS and Realtime** (documented in `specs/realtime-feed.md`): Client-side follow filtering now vs. rely on Phase 5 RLS. Recommendation: client-side now, simplify after Phase 5.
+
+---
+
+*Phases 1-2 are complete. Phases 3-6 are specced (not yet implemented). Phase 7 is specced. Phases 8-10 are not yet specced.*
