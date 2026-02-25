@@ -102,4 +102,51 @@ None for the recommended in-memory approach. If upgrading to distributed rate li
 
 ---
 
-*Phases 1-2 are complete. Phases 3-4 are specced (not yet implemented). Phase 5 is specced. Phases 6-10 are not yet specced.*
+## Phase 6 — Social Graph
+
+Phase 6 builds the social layer: the ability to find, follow, and connect with other users. It introduces profile pages, follow/unfollow mechanics, username search, and invite links for bringing friends into the app. The social layer is intentionally minimal — this is a shared reading list, not a social network.
+
+### Specs
+
+| # | Spec File | Concern | Summary |
+|---|---|---|---|
+| 1 | [`specs/user-profile-page.md`](specs/user-profile-page.md) | User profile page | A `/profile/[username]` page showing a user's identity, social stats (follower/following counts), follow/block state, and their current active share. The anchor for social interactions. |
+| 2 | [`specs/follow-unfollow.md`](specs/follow-unfollow.md) | Follow/unfollow mechanics | `followUser` and `unfollowUser` server actions, a reusable `FollowButton` component with optimistic updates, and integration with Phase 5 blocking. |
+| 3 | [`specs/username-search.md`](specs/username-search.md) | Username search | A `/search` page with live-as-you-type search across usernames (prefix) and display names (substring). Returns matching profiles with follow status. |
+| 4 | [`specs/invite-links.md`](specs/invite-links.md) | Invite links | Username-based invite URLs (`/invite/[username]`) with a public landing page for unauthenticated visitors. Post-signup flow directs new users to the inviter's profile to follow them. |
+
+### Recommended Build Order
+
+1. **Follow/Unfollow** — Server actions and `FollowButton` component. No UI host needed yet (can be tested standalone). Foundation for everything else in this phase.
+2. **User Profile Page** — The primary surface for social interactions. Depends on `FollowButton`. Also renders `ShareCard` (from Phase 4) for the user's active share.
+3. **Username Search** — Depends on `FollowButton` for search result actions and profile page as the navigation target for result clicks.
+4. **Invite Links** — Depends on the profile page as the post-signup redirect target. Requires minor modifications to existing signup and onboarding actions to pass through the invite parameter.
+
+### Data Model Changes
+None. Phase 6 uses existing tables:
+- `profiles` (Phase 1) — public-read RLS, searchable by username.
+- `follows` (Phase 1, updated Phase 5) — follow relationships with block checks on INSERT.
+- `blocks` (Phase 5) — block status queries for profile and follow button rendering.
+- `shares` (Phase 1, updated Phase 5) — followers-only RLS, timezone-aware active share query.
+
+### New Dependencies (to be installed)
+None. Phase 6 uses existing libraries (Next.js, Supabase, Tailwind).
+
+### Modifications to Existing Code
+- **Daily view header** (`specs/daily-view-page.md`): Add search icon/link and user menu with "Invite a friend" action.
+- **Signup action** (`app/(auth)/signup/actions.ts`): Pass through `invite` query parameter.
+- **Onboarding action** (`app/(protected)/onboarding/actions.ts`): Accept optional `inviteUsername`, redirect to profile page when provided.
+- **ShareCard sharer header** (`specs/share-card.md`): Make the sharer's name/username a link to `/profile/[username]`. Currently the header is not clickable (profile pages didn't exist).
+- **Rate limiting** (`specs/rate-limiting.md`): Add entries for `followUser` (20 req/min), `unfollowUser` (20 req/min), and `searchUsers` (30 req/min).
+
+### Open Decisions
+- **Search as page vs. overlay** (documented in `specs/username-search.md`): Dedicated `/search` page vs. dropdown/modal from header. Recommendation: dedicated page for Phase 6, enhance to overlay in Phase 7.
+- **Block direction awareness in FollowButton** (documented in `specs/follow-unfollow.md`): Single `isBlocked` boolean vs. `blockStatus` enum. Recommendation: `blockStatus` enum for differentiated UI.
+- **Invite tracking** (documented in `specs/invite-links.md`): No tracking (stateless URLs) vs. `referred_by` column on profiles. Recommendation: no tracking for Phase 6.
+- **Invite action location** (documented in `specs/invite-links.md`): Header icon vs. user menu vs. own profile. Recommendation: user menu dropdown from header avatar.
+- **Blocked users in search results** (documented in `specs/username-search.md`): Show all vs. filter blocked. Recommendation: filter blocked users from results.
+- **Unfollow hover state** (documented in `specs/follow-unfollow.md`): "Following" → "Unfollow" on hover vs. static. Recommendation: hover reveals "Unfollow" (Twitter/X pattern).
+
+---
+
+*Phases 1-2 are complete. Phases 3-5 are specced (not yet implemented). Phase 6 is specced. Phases 7-10 are not yet specced.*
