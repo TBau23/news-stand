@@ -16,7 +16,7 @@ Phase 3 builds the core share submission experience: pasting a URL, unfurling me
 
 1. ~~**URL Unfurling**~~ ✅ **DONE** — `POST /api/unfurl` route implemented with SSRF protection (`lib/ssrf.ts`), OG metadata extraction (`lib/unfurl.ts`), and comprehensive tests (29 tests passing). Used `node-html-parser` for parsing. Manual DNS resolution + IP check for SSRF prevention.
 2. ~~**Share Creation Flow**~~ ✅ **DONE** — `/share` page with 3-step flow (URL entry → preview & note → confirmation). `createShare` server action with timezone-aware `shared_date` computation. Pure validation logic in `lib/shares.ts` with 26 tests. Entry guard redirects to `/share/today` if user already shared today. Redirects to `/share/today` on success.
-3. **Today's Share View** — Depends on shares existing in the database (created by the share creation flow). Can be built in parallel with the creation flow if using mock data.
+3. ~~**Today's Share View**~~ ✅ **DONE** — `/share/today` page with entry guard (redirects to `/share` if no share exists). Displays share card with OG metadata and clickable URL. Inline note editing with `updateShareNote` server action (ownership-verified, 280-char limit). Pure `validateNoteUpdate` function in `lib/shares.ts` with 10 tests (36 total in shares.test.ts). `revalidatePath` on save for server component re-render.
 
 ### Data Model Changes
 None required. The `shares` and `profiles` tables from Phases 1-2 already have all necessary columns.
@@ -372,4 +372,4 @@ This migration is only applied if profiling data justifies it.
 
 ---
 
-*Phases 1-2 are complete. Phase 3 is in progress (URL Unfurling and Share Creation Flow done, Today's Share View remaining). Phases 4-10 are specced (not yet implemented).*
+*Phases 1-3 are complete. Phases 4-10 are specced (not yet implemented).*

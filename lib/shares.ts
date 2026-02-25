@@ -116,6 +116,26 @@ export function validateShareInput(input: ShareInput): {
   };
 }
 
+export function validateNoteUpdate(input: {
+  share_id: string;
+  note: string | null;
+}): { data: { share_id: string; note: string | null } | null; error: string | null } {
+  const shareId = input.share_id?.trim();
+  if (!shareId) {
+    return { data: null, error: "Share ID is required." };
+  }
+
+  const note = normalizeEmpty(input.note);
+  if (note && note.length > NOTE_MAX_LENGTH) {
+    return {
+      data: null,
+      error: `Note must be ${NOTE_MAX_LENGTH} characters or fewer.`,
+    };
+  }
+
+  return { data: { share_id: shareId, note }, error: null };
+}
+
 export function extractDomain(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "");

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   computeSharedDate,
   validateShareInput,
+  validateNoteUpdate,
   extractDomain,
   NOTE_MAX_LENGTH,
   type ShareInput,
@@ -197,6 +198,98 @@ describe("validateShareInput", () => {
   it("trims note whitespace", () => {
     const { data, error } = validateShareInput({
       ...validInput,
+      note: "  hello world  ",
+    });
+    expect(error).toBeNull();
+    expect(data?.note).toBe("hello world");
+  });
+});
+
+describe("validateNoteUpdate", () => {
+  it("accepts valid input", () => {
+    const { data, error } = validateNoteUpdate({
+      share_id: "abc-123",
+      note: "Updated note",
+    });
+    expect(error).toBeNull();
+    expect(data).toEqual({ share_id: "abc-123", note: "Updated note" });
+  });
+
+  it("rejects missing share_id", () => {
+    const { data, error } = validateNoteUpdate({
+      share_id: "",
+      note: "Hello",
+    });
+    expect(error).toBe("Share ID is required.");
+    expect(data).toBeNull();
+  });
+
+  it("rejects whitespace-only share_id", () => {
+    const { data, error } = validateNoteUpdate({
+      share_id: "   ",
+      note: "Hello",
+    });
+    expect(error).toBe("Share ID is required.");
+    expect(data).toBeNull();
+  });
+
+  it("trims share_id", () => {
+    const { data, error } = validateNoteUpdate({
+      share_id: "  abc-123  ",
+      note: null,
+    });
+    expect(error).toBeNull();
+    expect(data?.share_id).toBe("abc-123");
+  });
+
+  it("rejects note over 280 characters", () => {
+    const { data, error } = validateNoteUpdate({
+      share_id: "abc-123",
+      note: "a".repeat(NOTE_MAX_LENGTH + 1),
+    });
+    expect(error).toBe(`Note must be ${NOTE_MAX_LENGTH} characters or fewer.`);
+    expect(data).toBeNull();
+  });
+
+  it("accepts note at exactly 280 characters", () => {
+    const { data, error } = validateNoteUpdate({
+      share_id: "abc-123",
+      note: "a".repeat(NOTE_MAX_LENGTH),
+    });
+    expect(error).toBeNull();
+    expect(data?.note).toHaveLength(NOTE_MAX_LENGTH);
+  });
+
+  it("normalizes empty note to null", () => {
+    const { data, error } = validateNoteUpdate({
+      share_id: "abc-123",
+      note: "",
+    });
+    expect(error).toBeNull();
+    expect(data?.note).toBeNull();
+  });
+
+  it("normalizes whitespace-only note to null", () => {
+    const { data, error } = validateNoteUpdate({
+      share_id: "abc-123",
+      note: "   ",
+    });
+    expect(error).toBeNull();
+    expect(data?.note).toBeNull();
+  });
+
+  it("accepts null note", () => {
+    const { data, error } = validateNoteUpdate({
+      share_id: "abc-123",
+      note: null,
+    });
+    expect(error).toBeNull();
+    expect(data?.note).toBeNull();
+  });
+
+  it("trims note whitespace", () => {
+    const { data, error } = validateNoteUpdate({
+      share_id: "abc-123",
       note: "  hello world  ",
     });
     expect(error).toBeNull();
