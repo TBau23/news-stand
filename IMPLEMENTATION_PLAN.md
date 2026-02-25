@@ -249,4 +249,64 @@ None. Phase 8 uses existing libraries (Next.js, Supabase, Tailwind).
 
 ---
 
-*Phases 1-2 are complete. Phases 3-8 are specced (not yet implemented). Phases 9-10 are not yet specced.*
+## Phase 9 — Account Management & Settings
+
+Phase 9 adds the settings infrastructure: profile editing, password changes, blocked user management, and account deletion. It also optionally introduces freeform shares — content without a URL — for books, podcasts, and other offline content. Five specs, each covering a single concern.
+
+### Specs
+
+| # | Spec File | Concern | Summary |
+|---|---|---|---|
+| 1 | [`specs/settings-profile.md`](specs/settings-profile.md) | Profile editing | The `/settings` page — edit display name, username, and timezone. Also serves as the settings hub with navigation to other sections. Reuses onboarding validation logic. |
+| 2 | [`specs/settings-password.md`](specs/settings-password.md) | Password change | The `/settings/password` page — new password + confirmation form. Uses Supabase Auth `updateUser` API. No current password required (session is the proof of identity). |
+| 3 | [`specs/settings-blocked-users.md`](specs/settings-blocked-users.md) | Blocked users management | The `/settings/blocked` page — view blocked users list with unblock buttons. Consumes Phase 5 blocking server actions. Optimistic updates on unblock. |
+| 4 | [`specs/account-deletion.md`](specs/account-deletion.md) | Account deletion | The `/settings/account` page — danger zone with username-confirmation deletion flow. Uses Supabase Admin API to delete auth user, cascading to all associated data. |
+| 5 | [`specs/freeform-shares.md`](specs/freeform-shares.md) | Freeform content sharing | Extends the share creation page with a Link/Freeform toggle. Freeform shares have a title and optional type label (Book, Podcast, etc.) instead of a URL. Optional for Phase 9 — can be deferred. |
+
+### Recommended Build Order
+
+1. **Settings — Profile Editing** — The settings page is the hub for all other settings sections. Must land first since the other pages link back to it. Also establishes the `/settings` route group and layout pattern.
+2. **Settings — Password Change** — Standalone form with no data model dependencies. Quick to build, provides immediate value.
+3. **Settings — Blocked Users** — Depends on Phase 5 blocking being implemented. Consumes existing server actions; this is purely a UI spec.
+4. **Account Deletion** — Requires a new admin Supabase client (`SUPABASE_SERVICE_ROLE_KEY`). Build after the settings hub exists. The destructive nature warrants careful testing.
+5. **Freeform Shares** (optional) — The most complex spec — it modifies the share creation flow, the ShareCard component, and requires a migration. Build last, and only if the URL-based sharing loop is validated.
+
+### Data Model Changes
+
+One migration required (for freeform shares only — the other four specs need no schema changes):
+- `ALTER TABLE shares ALTER COLUMN content_url DROP NOT NULL` — makes URL optional for freeform entries.
+- `ALTER TABLE shares ADD COLUMN content_type TEXT DEFAULT 'link'` — distinguishes URL shares from freeform.
+- `ALTER TABLE shares ADD COLUMN freeform_label TEXT` — optional type label for freeform shares.
+
+If freeform shares are deferred, no migration is needed for Phase 9.
+
+### New Code Required
+
+| File | Spec | Purpose |
+|---|---|---|
+| `lib/supabase/admin.ts` | Account Deletion | Server-only Supabase client using `SUPABASE_SERVICE_ROLE_KEY`. Bypasses RLS for admin operations. |
+| `lib/validation.ts` | Settings — Profile | Shared validation logic extracted from onboarding (username format, timezone validation). Avoids duplication between `completeOnboarding` and `updateProfile`. |
+
+### New Dependencies (to be installed)
+None. Phase 9 uses existing libraries (Next.js, Supabase, Tailwind).
+
+### Environment Variables
+- `SUPABASE_SERVICE_ROLE_KEY` — required for account deletion. Must be set in `.env.local` and the deployment environment. Available from the Supabase dashboard. **Must never be exposed to the client.**
+
+### Modifications to Existing Code
+- **Header component** (from `specs/daily-view-page.md`): Add a "Settings" link to the user menu/avatar dropdown.
+- **Onboarding action** (`app/(protected)/onboarding/actions.ts`): Extract validation logic into `lib/validation.ts` and import from there. The onboarding action itself doesn't change behavior.
+- **Share creation page** (`app/(protected)/share/page.tsx`): Add Link/Freeform mode toggle (freeform shares spec only).
+- **ShareCard component** (`specs/share-card.md`): Add freeform rendering variant (freeform shares spec only).
+- **`createShare` server action** (`app/(protected)/share/actions.ts`): Extend to handle freeform content type (freeform shares spec only).
+- **Rate limiting** (`specs/rate-limiting.md`): Add entries for `updateProfile` (10 req/min), `changePassword` (5 req/min), `deleteAccount` (3 req/min).
+
+### Open Decisions
+- **Require current password for password change** (documented in `specs/settings-password.md`): New password only vs. current + new. Recommendation: new password only.
+- **Settings page layout** (documented in `specs/settings-profile.md`): Single page with sections vs. sub-routes. Recommendation: sub-routes (`/settings`, `/settings/password`, `/settings/blocked`, `/settings/account`).
+- **Freeform label storage** (documented in `specs/freeform-shares.md`): Application-level enum vs. database enum vs. free text. Recommendation: application-level enum (validate in server action, store as plain text).
+- **Freeform shares deferral** (documented in `specs/freeform-shares.md`): Build in Phase 9 vs. defer. Recommendation: defer if the core URL sharing loop isn't validated yet.
+
+---
+
+*Phases 1-2 are complete. Phases 3-9 are specced (not yet implemented). Phase 10 is not yet specced.*
