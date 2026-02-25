@@ -118,7 +118,7 @@ Phase 6 builds the social layer: the ability to find, follow, and connect with o
 
 ### Recommended Build Order
 
-1. **Follow/Unfollow** — Server actions and `FollowButton` component. No UI host needed yet (can be tested standalone). Foundation for everything else in this phase.
+1. ~~**Follow/Unfollow**~~ ✅ **DONE** — Pure validation functions (`validateFollowInput`, `validateUnfollowInput`) in `lib/social.ts`, reusing `isValidUuid` from `lib/blocking.ts`. Server actions (`followUser`, `unfollowUser`, `getFollowStatus`, `getBlockStatus`) in `app/(protected)/actions/social.ts` with rate limiting (20 req/min per user for both follow/unfollow). `FollowButton` client component in `components/follow-button.tsx` with optimistic updates via `useTransition`, hover "Unfollow" on "Following" button (Twitter/X pattern), and differentiated block states via `blockStatus: 'none' | 'viewer_blocked' | 'blocked_by'` enum (not single boolean). Types exported: `FollowResult`, `UnfollowResult`, `BlockStatus`. 18 tests for pure functions. 175 total tests passing.
 2. **User Profile Page** — The primary surface for social interactions. Depends on `FollowButton`. Also renders `ShareCard` (from Phase 4) for the user's active share.
 3. **Username Search** — Depends on `FollowButton` for search result actions and profile page as the navigation target for result clicks.
 4. **Invite Links** — Depends on the profile page as the post-signup redirect target. Requires minor modifications to existing signup and onboarding actions to pass through the invite parameter.
