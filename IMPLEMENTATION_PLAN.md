@@ -309,4 +309,66 @@ None. Phase 9 uses existing libraries (Next.js, Supabase, Tailwind).
 
 ---
 
-*Phases 1-2 are complete. Phases 3-9 are specced (not yet implemented). Phase 10 is not yet specced.*
+## Phase 10 — Infrastructure Hardening
+
+Phase 10 hardens the app for reliability and performance. It caches unfurl API responses to avoid redundant origin fetches, proxies OG images through the server to eliminate CORS and expiry issues, adds a service worker for faster repeat loads and offline fallback, and profiles + optimizes database queries, bundle size, and rendering. Four specs, each covering a single concern.
+
+### Specs
+
+| # | Spec File | Concern | Summary |
+|---|---|---|---|
+| 1 | [`specs/unfurl-caching.md`](specs/unfurl-caching.md) | Unfurl response caching | Server-side cache for the unfurl API. Repeated requests for the same URL return cached metadata instantly instead of re-fetching from the origin. Normalized URL keys, 24-hour TTL, bounded in-memory store. |
+| 2 | [`specs/image-proxy.md`](specs/image-proxy.md) | OG image proxying | `GET /api/image-proxy?url=...` endpoint that fetches external images server-side and caches them. Eliminates CORS failures, broken images from expired URLs, and slow third-party servers. ShareCard component routes all images through the proxy. |
+| 3 | [`specs/service-worker.md`](specs/service-worker.md) | Service worker and offline fallback | Caches static assets (JS, CSS, fonts) for faster repeat loads. Network-first navigation with a custom offline fallback page. Stale-while-revalidate for proxied images. Deferred from Phase 7. |
+| 4 | [`specs/performance-optimization.md`](specs/performance-optimization.md) | Performance profiling and optimization | Database query profiling (feed query, archive query), client bundle analysis, rendering optimization (Suspense boundaries, `next/image`, layout shift prevention), and performance monitoring setup. |
+
+### Recommended Build Order
+
+1. **Unfurl Caching** — Self-contained change to the existing unfurl API route. No dependencies on other Phase 10 specs. Quick win for reducing outbound HTTP requests.
+2. **Image Proxy** — New API route + ShareCard integration. Can be built in parallel with unfurl caching. Requires extracting SSRF protection into a shared utility (reused from Phase 3 unfurl endpoint).
+3. **Performance Optimization** — Cross-cutting audit and targeted fixes. Should be done after the image proxy is in place since `next/image` integration depends on images routing through the proxy. The profiling step determines which optimizations are actually needed.
+4. **Service Worker** — Build last. Benefits from having all other optimizations in place so the service worker caches the optimized assets. Also requires the image proxy to be working for the stale-while-revalidate image caching strategy.
+
+### Data Model Changes
+
+#### Definite
+None of the four specs require mandatory schema changes.
+
+#### Conditional (performance-driven)
+If `EXPLAIN ANALYZE` shows the feed query exceeds the 200ms target for 50 follows:
+- `ALTER TABLE shares ADD COLUMN expires_at TIMESTAMPTZ` — precomputed expiration timestamp, indexed for fast feed queries.
+- `createShare` server action updated to compute `expires_at` at insert time.
+- Backfill migration for existing shares.
+
+This migration is only applied if profiling data justifies it.
+
+### New Dependencies (to be installed)
+
+| Package | Purpose | Spec |
+|---|---|---|
+| `@ducanh2912/next-pwa` | Service worker generation via Workbox | Service Worker |
+| `@next/bundle-analyzer` | Bundle size visualization (dev only) | Performance Optimization |
+| `@vercel/analytics` | Real-user performance monitoring (optional) | Performance Optimization |
+
+### Modifications to Existing Code
+
+- **Unfurl API route** (`app/api/unfurl/route.ts`): Add cache check before origin fetch, cache store after successful fetch.
+- **ShareCard component** (`specs/share-card.md`): Replace direct `<img src={og_image_url}>` with proxy URLs via `proxyImageUrl()` helper. Optionally switch to `next/image`.
+- **SSRF protection**: Extract from unfurl route into a shared `lib/ssrf.ts` utility. Reuse in the image proxy route.
+- **Daily view page** (`app/(protected)/dashboard/page.tsx`): Add Suspense boundaries around data-dependent sections.
+- **Archive page** (`app/(protected)/archive/[date]/page.tsx`): Add Suspense boundaries.
+- **Root layout** (`app/layout.tsx`): Verify font loading strategy (`display: swap`).
+- **Next.js config** (`next.config.ts`): Add bundle analyzer wrapper, PWA plugin, and `images.remotePatterns` for the proxy domain.
+- **Rate limiting** (`specs/rate-limiting.md`): Add entry for image proxy (60 req/min per user).
+
+### Open Decisions
+- **Unfurl cache backend** (documented in `specs/unfurl-caching.md`): In-memory vs. database vs. Upstash Redis. Recommendation: in-memory.
+- **Image cache backend** (documented in `specs/image-proxy.md`): Filesystem vs. Supabase Storage vs. in-memory. Recommendation: filesystem.
+- **Service worker approach** (documented in `specs/service-worker.md`): `@ducanh2912/next-pwa` vs. manual `public/sw.js`. Recommendation: `@ducanh2912/next-pwa`.
+- **Feed query optimization** (documented in `specs/performance-optimization.md`): `expires_at` column vs. partial index vs. no change. Recommendation: profile first, only optimize if needed.
+- **`next/image` for OG images** (documented in `specs/performance-optimization.md`): `next/image` with proxy vs. manual `<img>` optimization. Recommendation: `next/image`.
+- **Performance monitoring** (documented in `specs/performance-optimization.md`): Vercel Analytics vs. Lighthouse CI vs. both. Recommendation: Vercel Analytics.
+
+---
+
+*Phases 1-2 are complete. Phases 3-10 are specced (not yet implemented).*
