@@ -45,7 +45,7 @@ Phase 4 builds the core reading experience: the main screen where you see today'
 
 ### Recommended Build Order
 
-1. **Feed Query** — No UI dependency. Create the database function and migration. Can be tested with mock data or manual inserts. Foundation for the page.
+1. ~~**Feed Query**~~ ✅ **DONE** — `get_active_feed_shares` database function in `supabase/migrations/20260225000000_add_get_active_feed_shares.sql`. Uses `SECURITY INVOKER` and `LANGUAGE sql STABLE`. TypeScript layer in `lib/feed.ts` with `FeedShare` type, `computeShareExpiration` (pure timezone→UTC expiration), `isShareActive` (pure active check), and `getFeedShares` (Supabase RPC wrapper). RPC type added to `lib/database.types.ts`. 22 tests covering timezone offsets (UTC, ET, PT, JST, IST, NPT), DST transitions (spring forward/fall back), boundary dates (year end, leap year), and default timezone fallback. 87 total tests passing.
 2. **Share Card** — Standalone presentational component. Can be built and tested with mock data from `lib/mock-data.ts` independently of the feed query.
 3. **Daily View Page** — Wires together the feed query and share card. Depends on both previous specs. Also depends on Phase 3 routes (`/share`, `/share/today`) for navigation links.
 

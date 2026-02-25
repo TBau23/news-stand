@@ -135,7 +135,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_active_feed_shares: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: {
+          id: string
+          user_id: string
+          content_url: string
+          title: string | null
+          description: string | null
+          og_image_url: string | null
+          og_site_name: string | null
+          note: string | null
+          shared_date: string
+          created_at: string
+          updated_at: string
+          username: string
+          display_name: string | null
+          avatar_url: string | null
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
