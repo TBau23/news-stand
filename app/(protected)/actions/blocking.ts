@@ -8,6 +8,7 @@ import {
   validateUnblockInput,
   type BlockedUser,
 } from "@/lib/blocking";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function blockUser(
   userId: string
@@ -19,6 +20,17 @@ export async function blockUser(
 
   if (!user) {
     redirect("/login");
+  }
+
+  // Rate limit: 10 req/min per user
+  const { success } = rateLimit({
+    key: `blockUser:${user.id}`,
+    limit: 10,
+    windowMs: 60_000,
+  });
+
+  if (!success) {
+    return { error: "Too many requests. Please try again in a moment." };
   }
 
   const { error: validationError } = validateBlockInput(userId, user.id);
@@ -64,6 +76,17 @@ export async function unblockUser(
 
   if (!user) {
     redirect("/login");
+  }
+
+  // Rate limit: 10 req/min per user
+  const { success } = rateLimit({
+    key: `unblockUser:${user.id}`,
+    limit: 10,
+    windowMs: 60_000,
+  });
+
+  if (!success) {
+    return { error: "Too many requests. Please try again in a moment." };
   }
 
   const { error: validationError } = validateUnblockInput(userId, user.id);

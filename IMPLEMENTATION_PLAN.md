@@ -82,7 +82,7 @@ Phase 5 hardens the app before opening it to more users. It tightens data access
 
 1. ~~**Followers-Only Visibility**~~ ✅ **DONE** — Pure database migration in `supabase/migrations/20260226000000_followers_only_shares.sql`. Drops public-read SELECT policy on `shares` and replaces with two policies: "Users can read own shares" (`auth.uid() = user_id`) and "Followers can read shares" (EXISTS subquery on `follows`). Drops public-read SELECT policy on `follows` and replaces with authenticated-only (`auth.uid() IS NOT NULL`). Profiles remain publicly readable. No application code changes needed — existing feed query (`SECURITY INVOKER`), share creation guard, today's share view, and daily view all work under the new policies (verified by spec analysis). 111 existing tests still pass.
 2. ~~**User Blocking**~~ ✅ **DONE** — Migration in `supabase/migrations/20260227000000_add_blocks_table.sql` creates `blocks` table with composite PK `(blocker_id, blocked_id)`, `no_self_block` constraint, indexes on both columns, and RLS policies (read own blocks, insert as blocker, delete as blocker). Updates `follows` INSERT policy to check for blocks in either direction. Pure validation functions (`isValidUuid`, `validateBlockInput`, `validateUnblockInput`) in `lib/blocking.ts` with `BlockedUser` type. Server actions (`blockUser`, `unblockUser`, `getBlockedUsers`) in `app/(protected)/actions/blocking.ts`. Block insert is ordered before follow deletion for safe failure mode. All operations are idempotent. 25 tests for pure functions. 136 total tests passing.
-3. **Rate Limiting** — Independent of the other two specs. Can be built in any order. Retrofits rate limit calls into existing and new endpoints.
+3. ~~**Rate Limiting**~~ ✅ **DONE** — In-memory sliding window rate limiter in `lib/rate-limit.ts`. Uses a `Map<string, number[]>` with per-key timestamp pruning and periodic background sweep (60s interval, unref'd). Fails open on internal errors. Integrated into all endpoints: `POST /api/unfurl` (30 req/min per user), `createShare` (10 req/min), `updateShareNote` (20 req/min), `blockUser` (10 req/min), `unblockUser` (10 req/min), `completeOnboarding` (5 req/min), `login` (10 req/15min per IP), `signup` (5 req/15min per IP), auth callback (10 req/min per IP). API routes return HTTP 429 with `Retry-After` header. Server actions return `{ error: "..." }`. 21 tests for pure rate limiter logic. 157 total tests passing.
 
 ### Data Model Changes
 One migration required with:
@@ -372,4 +372,4 @@ This migration is only applied if profiling data justifies it.
 
 ---
 
-*Phases 1-4 are complete. Phases 5-10 are specced (not yet implemented).*
+*Phases 1-5 are complete. Phases 6-10 are specced (not yet implemented).*

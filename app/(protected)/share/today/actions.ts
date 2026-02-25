@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { validateNoteUpdate } from "@/lib/shares";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function updateShareNote(
   formData: FormData
@@ -14,6 +15,17 @@ export async function updateShareNote(
 
   if (!user) {
     return { error: "Not authenticated." };
+  }
+
+  // Rate limit: 20 req/min per user
+  const { success } = rateLimit({
+    key: `updateShareNote:${user.id}`,
+    limit: 20,
+    windowMs: 60_000,
+  });
+
+  if (!success) {
+    return { error: "Too many requests. Please try again in a moment." };
   }
 
   const input = {

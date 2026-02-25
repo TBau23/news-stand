@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function completeOnboarding(
   formData: FormData
@@ -13,6 +14,17 @@ export async function completeOnboarding(
 
   if (!user) {
     redirect("/login");
+  }
+
+  // Rate limit: 5 req/min per user
+  const { success } = rateLimit({
+    key: `completeOnboarding:${user.id}`,
+    limit: 5,
+    windowMs: 60_000,
+  });
+
+  if (!success) {
+    return { error: "Too many requests. Please try again in a moment." };
   }
 
   const username = (formData.get("username") as string).trim().toLowerCase();

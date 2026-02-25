@@ -1,9 +1,25 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function login(formData: FormData): Promise<{ error: string } | undefined> {
+  // Rate limit: 10 req/15min per IP
+  const headersList = await headers();
+  const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+
+  const { success } = rateLimit({
+    key: `login:${ip}`,
+    limit: 10,
+    windowMs: 15 * 60_000,
+  });
+
+  if (!success) {
+    return { error: "Too many login attempts. Please try again later." };
+  }
+
   const supabase = await createClient();
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;

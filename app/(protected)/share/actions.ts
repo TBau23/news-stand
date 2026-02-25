@@ -7,6 +7,7 @@ import {
   computeSharedDate,
   type ShareInput,
 } from "@/lib/shares";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function createShare(
   formData: FormData
@@ -18,6 +19,17 @@ export async function createShare(
 
   if (!user) {
     redirect("/login");
+  }
+
+  // Rate limit: 10 req/min per user
+  const { success } = rateLimit({
+    key: `createShare:${user.id}`,
+    limit: 10,
+    windowMs: 60_000,
+  });
+
+  if (!success) {
+    return { error: "Too many requests. Please try again in a moment." };
   }
 
   const { data: profile } = await supabase
