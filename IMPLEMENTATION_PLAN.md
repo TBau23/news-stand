@@ -209,4 +209,44 @@ If the service worker is added later (deferred to Phase 10): `@ducanh2912/next-p
 
 ---
 
-*Phases 1-2 are complete. Phases 3-6 are specced (not yet implemented). Phase 7 is specced. Phases 8-10 are not yet specced.*
+## Phase 8 — History and Discovery
+
+Phase 8 adds the archive — a way to browse past days and rediscover what people shared last week or last month. It also introduces lightweight discovery patterns that surface connections across shares (same link shared by multiple people, popular sources). This is where the daily constraint starts producing a valuable long-term artifact.
+
+### Specs
+
+| # | Spec File | Concern | Summary |
+|---|---|---|---|
+| 1 | [`specs/archive-query.md`](specs/archive-query.md) | Historical share data retrieval | `get_archive_shares(p_user_id, p_date)` database function that fetches shares from followed users for a specific past date. No timezone expiration — historical shares are always complete. Mirrors the feed query pattern. |
+| 2 | [`specs/archive-page.md`](specs/archive-page.md) | Archive browsing page | The `/archive/[date]` page — date navigation (prev/next arrows, date picker), share grid for the selected date, viewer's own share section, and empty states. The main browsing experience for history. |
+| 3 | [`specs/share-patterns.md`](specs/share-patterns.md) | Discovery patterns and insights | Cross-user link overlap badges ("Also shared by Sarah and 2 others") on share cards, and a popular sources summary (top domains in the last 7 days) on the archive page. Lightweight discovery layer. |
+
+### Recommended Build Order
+
+1. **Archive Query** — No UI dependency. Create the database function and migration. Can be tested with mock data. Foundation for the page.
+2. **Archive Page** — Depends on the archive query for data. Also reuses `ShareCard` from Phase 4. Can be built and tested with the query in place.
+3. **Share Patterns** — Depends on the archive page as the display surface and the archive query for the base data. Supplements the archive with enrichment queries. Can be deferred or built incrementally after the archive page is functional.
+
+### Data Model Changes
+One migration required:
+- `get_archive_shares(p_user_id UUID, p_date DATE)` — database function (Supabase RPC) for historical share retrieval.
+- `get_popular_sources(p_user_id UUID, p_date DATE)` — database function for popular domain aggregation over a 7-day window.
+
+No table schema changes needed.
+
+### New Dependencies (to be installed)
+None. Phase 8 uses existing libraries (Next.js, Supabase, Tailwind).
+
+### Modifications to Existing Code
+- **Header component** (from `specs/daily-view-page.md`): Add an "Archive" link/icon to the header navigation for access from all protected pages.
+- **ShareCard component** (`specs/share-card.md`): Add optional `overlap` prop for the cross-user link overlap badge.
+- **Rate limiting** (`specs/rate-limiting.md`): Add entries for archive page loads and pattern queries if needed (these are read-only server-component fetches, so rate limiting is less critical than for mutations).
+
+### Open Decisions
+- **Overlap scope** (documented in `specs/share-patterns.md`): All-time vs. rolling window for cross-user link overlap. Recommendation: all-time.
+- **Popular sources surface** (documented in `specs/share-patterns.md`): Inline on archive page vs. dedicated discovery page. Recommendation: inline.
+- **Domain filtering** (documented in `specs/share-patterns.md`): Clicking a popular source to filter the archive vs. display-only. Recommendation: defer filtering.
+
+---
+
+*Phases 1-2 are complete. Phases 3-8 are specced (not yet implemented). Phases 9-10 are not yet specced.*
